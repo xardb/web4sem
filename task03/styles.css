@@ -1,0 +1,266 @@
+/* Общие стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 960px;
+    padding: 0 15px;
+}
+
+header {
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #e7e7e7;
+    padding: 15px 0;
+    width: 100%;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    margin-right: 15px;
+    width: 50px;
+    height: 50px;
+}
+
+.site-title {
+    color: #333;
+    font-size: 20px;
+}
+
+/* Навигация - для мобилок */
+nav {
+    background-color: #f0f0f0;
+    padding: 10px 0;
+    width: 100%;
+}
+
+.menu {
+    display: flex;
+    list-style-type: none;
+    flex-direction: column;
+}
+
+.menu li {
+    margin-bottom: 10px;
+}
+
+.menu a {
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+    display: block;
+    padding: 8px 0;
+}
+
+.menu a:hover {
+    color: #007bff;
+}
+
+/* Основное содержимое */
+main {
+    flex: 1;
+    padding: 20px 0;
+}
+
+.content-wrapper{
+    display: flex;
+    flex-direction: column;
+}
+
+/* поменяем порядок секций */
+#table-section{
+    order:1;
+}
+
+#links-section{
+    order: 2;
+}
+
+#form-section{
+    order: 3;
+}
+
+section {
+    margin-bottom: 30px;
+}
+
+h2, h3 {
+    margin-bottom: 15px;
+    font-size: 22px;
+    color: #333;
+}
+
+ul, ol {
+    margin-bottom: 20px;
+    padding-left: 20px;
+}
+
+li {
+    margin-bottom: 10px;
+}
+
+.map-image {
+    display: block;
+    margin-top: 10px;
+    max-width: 100%;
+    height: auto;
+}
+/* tablica */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:nth-child(odd) {
+    background-color: #fff;
+}
+
+form {
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"],input[type="tel"],input[type="email"],input[type="date"],select,textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+textarea {
+    height: 100px;
+}
+
+fieldset {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+legend {
+    font-weight: bold;
+    padding: 0 10px;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 20px 0;
+    width: 100%;
+}
+
+/* для планшетов и ноутов */
+@media screen and (min-width: 768px) {
+    .container {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+    
+    .site-title {
+        font-size: 24px;
+    }
+    
+
+    .menu {
+        flex-direction: row;
+    }
+    
+    .menu li {
+        margin-bottom: 0;
+        margin-right: 20px;
+    }
+
+    #table-section {
+        order: 2;
+    }
+    
+    #links-section {
+        order: 1;
+    }
+    
+    #form-section {
+        order: 3;
+    }
+
+    table {
+        font-size: 16px;
+    }
+    
+    /* Улучшаем кнопку */
+    button {
+        width: auto;
+    }
+}
+
+/* Стили для пк (1024px) */
+@media screen and (min-width: 1024px) {
+
+    .header-content {
+        justify-content: flex-start;
+    }
+    
+    .menu {
+        justify-content: flex-start;
+    }
+}
