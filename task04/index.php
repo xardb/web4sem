@@ -1,88 +1,166 @@
 <?php
-/**
- * Реализовать проверку заполнения обязательных полей формы в предыдущей
- * с использованием Cookies, а также заполнение формы по умолчанию ранее
- * введенными значениями.
- */
-
-// Отправляем браузеру правильную кодировку,
-// файл index.php должен быть в кодировке UTF-8 без BOM.
 header('Content-Type: text/html; charset=UTF-8');
 
-// В суперглобальном массиве $_SERVER PHP сохраняет некторые заголовки запроса HTTP
-// и другие сведения о клиненте и сервере, например метод текущего запроса $_SERVER['REQUEST_METHOD'].
-if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-  // Массив для временного хранения сообщений пользователю.
-  $messages = array();
+$errors = [];
+$values = [];
+$messages = [];
 
-  // В суперглобальном массиве $_COOKIE PHP хранит все имена и значения куки текущего запроса.
-  // Выдаем сообщение об успешном сохранении.
-  if (!empty($_COOKIE['save'])) {
-    // Удаляем куку, указывая время устаревания в прошлом.
-    setcookie('save', '', 100000);
-    // Если есть параметр save, то выводим сообщение пользователю.
-    $messages[] = 'Спасибо, результаты сохранены.';
-  }
-
-  // Складываем признак ошибок в массив.
-  $errors = array();
-  $errors['fio'] = !empty($_COOKIE['fio_error']);
-  // TODO: аналогично все поля.
-
-  // Выдаем сообщения об ошибках.
-  if ($errors['fio']) {
-    // Удаляем куки, указывая время устаревания в прошлом.
-    setcookie('fio_error', '', 100000);
-    setcookie('fio_value', '', 100000);
-    // Выводим сообщение.
-    $messages[] = '<div class="error">Заполните имя.</div>';
-  }
-  // TODO: тут выдать сообщения об ошибках в других полях.
-
-  // Складываем предыдущие значения полей в массив, если есть.
-  $values = array();
-  $values['fio'] = empty($_COOKIE['fio_value']) ? '' : $_COOKIE['fio_value'];
-  // TODO: аналогично все поля.
-
-  // Включаем содержимое файла form.php.
-  // В нем будут доступны переменные $messages, $errors и $values для вывода 
-  // сообщений, полей с ранее заполненными данными и признаками ошибок.
-  include('form.php');
+if (!empty($_COOKIE['errors'])) {
+    $errors = json_decode($_COOKIE['errors'], true);
+    setcookie('errors', '', time() - 3600);
 }
-// Иначе, если запрос был методом POST, т.е. нужно проверить данные и сохранить их в XML-файл.
-else {
-  // Проверяем ошибки.
-  $errors = FALSE;
-  if (empty($_POST['fio'])) {
-    // Выдаем куку на день с флажком об ошибке в поле fio.
-    setcookie('fio_error', '1', time() + 24 * 60 * 60);
-    $errors = TRUE;
-  }
-  // Сохраняем ранее введенное в форму значение на месяц.
-  setcookie('fio_value', $_POST['fio'], time() + 30 * 24 * 60 * 60);
 
-// *************
-// TODO: тут необходимо проверить правильность заполнения всех остальных полей.
-// Сохранить в Cookie признаки ошибок и значения полей.
-// *************
-
-  if ($errors) {
-    // При наличии ошибок перезагружаем страницу и завершаем работу скрипта.
-    header('Location: index.php');
-    exit();
-  }
-  else {
-    // Удаляем Cookies с признаками ошибок.
-    setcookie('fio_error', '', 100000);
-    // TODO: тут необходимо удалить остальные Cookies.
-  }
-
-  // Сохранение в БД.
-  // ...
-
-  // Сохраняем куку с признаком успешного сохранения.
-  setcookie('save', '1');
-
-  // Делаем перенаправление.
-  header('Location: index.php');
+if (!empty($_COOKIE['values'])) {
+    $values = json_decode($_COOKIE['values'], true);
 }
+
+if (!empty($_COOKIE['save'])) {
+    $messages[] = "Данные успешно сохранены!";
+    setcookie('save', '', time() - 3600);
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Форма</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.error {
+    border: 2px solid red !important;
+}
+.message-success {
+    color: green;
+    margin-bottom: 15px;
+}
+.message-error {
+    color: red;
+    margin-bottom: 5px;
+}
+</style>
+</head>
+<body>
+
+<header>
+    <div class="container header-content">
+        <h1 class="site-title">Лабораторная работа №4</h1>
+    </div>
+</header>
+
+<main>
+<div class="container content-wrapper">
+
+<section id="form-section">
+<h2>Форма заявки</h2>
+
+<?php
+if (!empty($messages)) {
+    foreach ($messages as $message) {
+        print('<div class="message-success">'.$message.'</div>');
+    }
+}
+
+if (!empty($errors)) {
+    foreach ($errors as $error) {
+        print('<div class="message-error">'.$error.'</div>');
+    }
+}
+?>
+
+<form action="form.php" method="POST">
+
+<div class="form-group">
+<label>ФИО</label>
+<input type="text" name="fio"
+<?php if (!empty($errors['fio'])) print 'class="error"'; ?>
+value="<?php print htmlspecialchars($values['fio'] ?? ''); ?>">
+</div>
+
+<div class="form-group">
+<label>Телефон</label>
+<input type="tel" name="phone"
+<?php if (!empty($errors['phone'])) print 'class="error"'; ?>
+value="<?php print htmlspecialchars($values['phone'] ?? ''); ?>">
+</div>
+
+<div class="form-group">
+<label>Email</label>
+<input type="email" name="email"
+<?php if (!empty($errors['email'])) print 'class="error"'; ?>
+value="<?php print htmlspecialchars($values['email'] ?? ''); ?>">
+</div>
+
+<div class="form-group">
+<label>Дата рождения</label>
+<input type="date" name="birth_date"
+<?php if (!empty($errors['birth_date'])) print 'class="error"'; ?>
+value="<?php print htmlspecialchars($values['birth_date'] ?? ''); ?>">
+</div>
+
+<fieldset>
+<legend>Пол</legend>
+<input type="radio" name="gender" value="male"
+<?php if (($values['gender'] ?? '') == 'male') print 'checked'; ?>> Мужской
+<br>
+<input type="radio" name="gender" value="female"
+<?php if (($values['gender'] ?? '') == 'female') print 'checked'; ?>> Женский
+</fieldset>
+
+<div class="form-group">
+<label>Любимые языки программирования</label>
+<select name="languages[]" multiple size="6"
+<?php if (!empty($errors['languages'])) print 'class="error"'; ?>>
+<?php
+$languages = [
+1 => "Pascal",
+2 => "C",
+3 => "C++",
+4 => "JavaScript",
+5 => "PHP",
+6 => "Python",
+7 => "Java",
+8 => "Haskell",
+9 => "Clojure",
+10 => "Prolog",
+11 => "Scala",
+12 => "Go"
+];
+
+foreach ($languages as $id => $name) {
+    $selected = (isset($values['languages']) && in_array($id, $values['languages'])) ? 'selected' : '';
+    print "<option value=\"$id\" $selected>$name</option>";
+}
+?>
+</select>
+</div>
+
+<div class="form-group">
+<label>Биография</label>
+<textarea name="biography"
+<?php if (!empty($errors['biography'])) print 'class="error"'; ?>>
+<?php print htmlspecialchars($values['biography'] ?? ''); ?>
+</textarea>
+</div>
+
+<div class="form-group">
+<input type="checkbox" name="contract_agreed" value="1"
+<?php if (!empty($values['contract_agreed'])) print 'checked'; ?>>
+<label>С контрактом ознакомлен</label>
+</div>
+
+<button type="submit">Сохранить</button>
+
+</form>
+</section>
+
+</div>
+</main>
+
+<footer>
+    <div class="container">
+        © 2025 Лабораторная работа
+    </div>
+</footer>
+
+</body>
+</html>
