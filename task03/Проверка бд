@@ -1,0 +1,9 @@
+mariadb -u webuser -p web4sem
+SELECT
+  a.id,
+  a.name,
+  l.name AS language
+FROM application a
+JOIN application_language al ON al.application_id = a.id
+JOIN language l ON l.id = al.language_id
+ORDER BY a.id;

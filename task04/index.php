@@ -24,7 +24,7 @@ if (!empty($_COOKIE['save'])) {
 <head>
 <meta charset="UTF-8">
 <title>Форма</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="styles.css">
 <style>
 .error {
     border: 2px solid red !important;
