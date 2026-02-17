@@ -82,14 +82,34 @@ if (!$admin || !password_verify($_SERVER['PHP_AUTH_PW'], $admin['pass_hash'])) {
     width: 100%;
     margin-bottom: 10px;
 }
+.admin-header {
+    background: linear-gradient(135deg, #343a40, #495057);
+    color: white;
+    padding: 40px 0;
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.admin-main-title {
+    font-size: 36px;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.admin-subtitle {
+    font-size: 16px;
+    opacity: 0.85;
+}
+
 
 </style>
 </head>
 <body>
 
-<header>
-  <div class="container header-content">
-    <div class="site-title">Админ-панель</div>
+<header class="admin-header">
+  <div class="container">
+    <h1 class="admin-main-title">Админ-панель</h1>
+    <p class="admin-subtitle">Управление пользователями и статистикой</p>
   </div>
 </header>
 
