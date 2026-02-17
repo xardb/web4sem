@@ -91,10 +91,22 @@ $langs = $db->query("SELECT id, name FROM language ORDER BY name")
 </head>
 
 <body>
-
 <header>
-  <div class="container header-content">
+  <div class="container header-content" style="justify-content: space-between; width:100%;">
     <div class="site-title">Задание 5 — авторизация</div>
+
+    <div>
+      <?php if (empty($_SESSION['login'])): ?>
+        <a href="login.php" style="text-decoration:none;">
+          <button type="button">Войти</button>
+        </a>
+      <?php else: ?>
+        <form action="logout.php" method="post" style="display:inline;">
+          <button type="submit">Выйти</button>
+        </form>
+      <?php endif; ?>
+    </div>
+
   </div>
 </header>
 
