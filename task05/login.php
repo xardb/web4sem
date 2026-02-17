@@ -79,6 +79,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
           </div>
 
           <button type="submit">Войти</button>
+          <div style="margin-top:15px;">
+            <a href="index.php" style="text-decoration:none;">
+              <button type="button" style="background-color:#6c757d;">
+                Назад на главную
+              </button>
+            </a>
+          </div>
+
 
         </form>
 
