@@ -229,8 +229,6 @@ $stats = $db->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<h1>Админ-панель</h1>
-
 <table class="admin-table">
 <tr>
 <th>ID</th>
@@ -268,10 +266,11 @@ onclick="return confirm('Удалить?')">Удалить</a>
 </main>
 
 <footer>
-  <div class="container">
-    Админ-панель
+  <div class="container" style="text-align:center; font-size:14px;">
+    © <?= date('Y') ?> Администрирование системы
   </div>
 </footer>
+
 
 </body>
 </html>
