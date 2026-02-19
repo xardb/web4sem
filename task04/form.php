@@ -81,11 +81,28 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
     );
 
-    $stmt = $db->prepare(
-        "INSERT INTO application
-        (name, phone, email, birthdate, gender, bio, contract)
-        VALUES (?, ?, ?, ?, ?, ?, ?)"
-    );
+// Генерируем фиктивные логин и пароль для совместимости с 5 лабой
+$login = 'lab4_' . substr(md5(uniqid()), 0, 8);
+$pass_hash = password_hash('temp', PASSWORD_DEFAULT);
+
+$stmt = $db->prepare(
+  "INSERT INTO application
+  (name, phone, email, birthdate, gender, bio, contract, login, pass_hash)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+);
+
+$stmt->execute([
+  $_POST['fio'],
+  $_POST['phone'],
+  $_POST['email'],
+  $_POST['birth_date'],
+  $_POST['gender'],
+  $_POST['biography'],
+  1,
+  $login,
+  $pass_hash
+]);
+
 
     $stmt->execute([
         $_POST['fio'],
