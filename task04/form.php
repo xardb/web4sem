@@ -104,16 +104,6 @@ $stmt->execute([
 ]);
 
 
-    $stmt->execute([
-        $_POST['fio'],
-        $_POST['phone'],
-        $_POST['email'],
-        $_POST['birth_date'],
-        $_POST['gender'],
-        $_POST['biography'],
-        1
-    ]);
-
     $appId = $db->lastInsertId();
 
     $stmt2 = $db->prepare(
