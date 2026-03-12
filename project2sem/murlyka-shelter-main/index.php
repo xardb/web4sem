@@ -500,6 +500,7 @@ $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 <input type="checkbox" id="privacy" name="privacy" required>
                 <label for="privacy">Согласен(а) на обработку персональных данных</label>
             </div>
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
             <button type="submit" class="submit-btn">Отправить заявку</button>
             <div class="form-message" id="formMessage"></div>
         </form>
