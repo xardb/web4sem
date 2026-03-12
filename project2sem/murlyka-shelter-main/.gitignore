@@ -1,0 +1,10 @@
+node_modules/
+package-lock.json
+
+# вспомогательные проекты/черновики
+project/
+
+# системное/IDE
+.idea/
+.vscode/
+.DS_Store

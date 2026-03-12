@@ -1,7 +1,9 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
 session_start();
-
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 $db = new PDO(
     'mysql:host=localhost;dbname=web4sem;charset=utf8mb4',
     'webuser',
@@ -10,22 +12,19 @@ $db = new PDO(
 );
 
 $error_message = '';
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
+    if (
+        empty($_POST['csrf_token']) ||
+        empty($_SESSION['csrf_token']) ||
+        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
+    ) {
+        die("CSRF validation failed");
+    }
 
     $stmt = $db->prepare("SELECT id, pass_hash FROM application WHERE login=?");
     $stmt->execute([$_POST['login']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($user && password_verify($_POST['pass'], $user['pass_hash'])) {
-        $_SESSION['login'] = $_POST['login'];
-        $_SESSION['uid'] = $user['id'];
-        header('Location: index.php');
-        exit();
-    } else {
-        $error_message = "Неверный логин или пароль";
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -67,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
 
         <form method="post">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
           <div class="form-group">
             <label>Логин</label>

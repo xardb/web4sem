@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
-
+session_start();
 /* ===== HTTP AUTH ===== */
 
 if (empty($_SERVER['PHP_AUTH_USER']) || empty($_SERVER['PHP_AUTH_PW'])) {
@@ -19,6 +19,11 @@ $db = new PDO(
 $stmt = $db->prepare("SELECT pass_hash FROM admin WHERE login=?");
 $stmt->execute([$_SERVER['PHP_AUTH_USER']]);
 $admin = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 
 if (!$admin || !password_verify($_SERVER['PHP_AUTH_PW'], $admin['pass_hash'])) {
     header('HTTP/1.1 401 Unauthorized');
@@ -118,8 +123,16 @@ if (!$admin || !password_verify($_SERVER['PHP_AUTH_PW'], $admin['pass_hash'])) {
 <?php
 
 /* ===== УДАЛЕНИЕ ===== */
-
 if (!empty($_GET['delete'])) {
+
+    if (
+        empty($_GET['csrf_token']) ||
+        empty($_SESSION['csrf_token']) ||
+        !hash_equals($_SESSION['csrf_token'], $_GET['csrf_token'])
+    ) {
+        die("CSRF validation failed");
+    }
+
     $id = (int)$_GET['delete'];
 
     $db->prepare("DELETE FROM application_language WHERE application_id=?")
@@ -192,6 +205,7 @@ if (!empty($_GET['edit'])) {
     <h1>Редактирование пользователя #<?= $id ?></h1>
 
     <form method="post" class="edit-form">
+        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
         <input type="hidden" name="id" value="<?= $id ?>">
         <input type="hidden" name="update" value="1">
 
@@ -264,9 +278,11 @@ $stats = $db->query("
 <td><?= htmlspecialchars($u['email']) ?></td>
 <td class="admin-actions">
 <a class="edit" href="admin.php?edit=<?= $u['id'] ?>">Редактировать</a>
-<a class="delete" href="admin.php?delete=<?= $u['id'] ?>"
-onclick="return confirm('Удалить?')">Удалить</a>
-</td>
+<a class="delete"
+   href="admin.php?delete=<?= $u['id'] ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>"
+   onclick="return confirm('Удалить?')">
+   Удалить
+</a></td>
 </tr>
 <?php endforeach; ?>
 </table>

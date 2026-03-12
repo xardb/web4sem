@@ -1,10 +1,13 @@
 <?php
 header('Content-Type: text/html; charset=UTF-8');
 session_start();
-
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 $errors = [];
 $values = [];
 $messages = [];
+
 
 /* ===== СООБЩЕНИЕ ОБ УСПЕШНОМ СОХРАНЕНИИ ===== */
 if (!empty($_COOKIE['save'])) {
@@ -128,7 +131,7 @@ if (!empty($errors)) {
 ?>
 
 <form method="post" action="form.php">
-
+<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 <div class="form-group">
 <label>ФИО</label>
 <input type="text" name="fio"
