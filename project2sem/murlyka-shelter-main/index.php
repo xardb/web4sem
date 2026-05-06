@@ -50,6 +50,11 @@ if (empty($_SESSION['csrf_token'])) {
                         </ul>
                     </li>
                     <li class="nav-item"><a class="nav-link main-nav-link" href="#faq">FAQ</a></li>
+
+                    <li class="nav-item">
+                        <a class="btn btn-outline-primary contact-btn" href="../task05/login.php">Вход</a>
+                    </li>
+
                     <li class="nav-item">
                         <button class="btn btn-primary contact-btn" id="openContacts">Связаться</button>
                     </li>
