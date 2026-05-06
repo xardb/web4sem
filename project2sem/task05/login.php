@@ -9,8 +9,8 @@ $error = '';
 try {
     $db = new PDO(
         'mysql:host=localhost;dbname=web4sem;charset=utf8mb4',
-        'root',
-        '',
+        'webuser',
+        'webpass',
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
