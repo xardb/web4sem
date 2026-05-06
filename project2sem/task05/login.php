@@ -1,107 +1,133 @@
 <?php
-header('Content-Type: text/html; charset=UTF-8');
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+$error = '';
+
+/* ===== ПОДКЛЮЧЕНИЕ К БД ===== */
+
+try {
+    $db = new PDO(
+        'mysql:host=localhost;dbname=web4sem;charset=utf8mb4',
+        'webuser',
+        'webpass',
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]
+    );
+} catch (PDOException $e) {
+    die('Ошибка подключения к базе данных.');
 }
-$db = new PDO(
-    'mysql:host=localhost;dbname=web4sem;charset=utf8mb4',
-    'webuser',
-    'webpass',
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
 
-$error_message = '';
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+/* ===== ЕСЛИ УЖЕ АВТОРИЗОВАН ===== */
 
-    if (
-        empty($_POST['csrf_token']) ||
-        empty($_SESSION['csrf_token']) ||
-        !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])
-    ) {
-        die("CSRF validation failed");
+if (!empty($_SESSION['user_id'])) {
+    header('Location: profile.php?id=' . urlencode($_SESSION['user_id']));
+    exit();
+}
+
+/* ===== ОБРАБОТКА ВХОДА ===== */
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $login = trim($_POST['login'] ?? '');
+    $password = trim($_POST['password'] ?? '');
+
+    if ($login === '' || $password === '') {
+        $error = 'Введите логин и пароль.';
+    } else {
+        $stmt = $db->prepare("
+            SELECT id, login, pass_hash
+            FROM application
+            WHERE login = :login
+            LIMIT 1
+        ");
+
+        $stmt->execute([
+            ':login' => $login
+        ]);
+
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($password, $user['pass_hash'])) {
+            $error = 'Неверный логин или пароль.';
+        } else {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['login'] = $user['login'];
+
+            setcookie('login', $user['login'], time() + 3600 * 24 * 30, '/');
+            setcookie('save', '1', time() + 3600 * 24 * 30, '/');
+
+            header('Location: profile.php?id=' . urlencode($user['id']));
+            exit();
+        }
     }
+}
 
-    $stmt = $db->prepare("SELECT id, pass_hash FROM application WHERE login=?");
-    $stmt->execute([$_POST['login']]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+/* ===== АВТОПОДСТАНОВКА ЛОГИНА ИЗ COOKIE ===== */
+
+$savedLogin = $_COOKIE['login'] ?? '';
+
 ?>
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Вход</title>
-<link rel="stylesheet" href="styles.css">
-<style>
-.login-wrapper {
-    max-width: 400px;
-    margin: 50px auto;
-}
-.error-message {
-    color: red;
-    margin-bottom: 15px;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>Вход в профиль</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
 
 <header>
-  <div class="container header-content">
-    <div class="site-title">Вход в систему</div>
-  </div>
+    <div class="container">
+        <h1>Вход в профиль</h1>
+    </div>
 </header>
 
 <main>
-  <div class="container">
+    <div class="container">
+        <section>
+            <h2>Авторизация</h2>
 
-    <div class="login-wrapper">
+            <?php if ($error !== ''): ?>
+                <div class="error-message">
+                    <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+                </div>
+            <?php endif; ?>
 
-      <section>
-        <h2>Авторизация</h2>
+            <form method="POST" action="login.php">
+                <div class="form-group">
+                    <label for="login">Логин</label>
+                    <input
+                        type="text"
+                        id="login"
+                        name="login"
+                        value="<?= htmlspecialchars($savedLogin, ENT_QUOTES, 'UTF-8') ?>"
+                        required
+                    >
+                </div>
 
-        <?php if (!empty($error_message)): ?>
-          <div class="error-message"><?= $error_message ?></div>
-        <?php endif; ?>
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                    >
+                </div>
 
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <button type="submit">Войти</button>
+            </form>
 
-          <div class="form-group">
-            <label>Логин</label>
-            <input type="text" name="login" required>
-          </div>
-
-          <div class="form-group">
-            <label>Пароль</label>
-            <input type="password" name="pass" required>
-          </div>
-
-          <button type="submit">Войти</button>
-          <div style="margin-top:15px;">
-            <a href="index.php" style="text-decoration:none;">
-              <button type="button" style="background-color:#6c757d;">
-                Назад на главную
-              </button>
-            </a>
-          </div>
-
-
-        </form>
-
-      </section>
-
+            <p style="margin-top: 20px;">
+                <a href="../murlyka-shelter-main/index.php">Вернуться на главную</a>
+            </p>
+        </section>
     </div>
-
-  </div>
 </main>
-
-<footer>
-  <div class="container">
-    Задание 5
-  </div>
-</footer>
 
 </body>
 </html>

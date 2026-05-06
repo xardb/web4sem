@@ -1,6 +1,9 @@
 <?php
 session_start();
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -471,7 +474,7 @@ $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
             <h2 class="modal-title">Заявка на пристройство</h2>
             <button class="close-modal" id="closeForm">&times;</button>
         </div>
-        <form id="contactForm" action="../project2sem/task05/form.php" method="POST">
+        <form id="contactForm" action="../task05/form.php" method="POST">
             <div class="form-group">
                 <label for="fullName">ФИО *</label>
                 <input type="text" id="fullName" name="fullName" required>

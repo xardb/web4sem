@@ -1,312 +1,275 @@
 <?php
-header('Content-Type: text/html; charset=UTF-8');
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
-/* ===== HTTP AUTH ===== */
 
-if (empty($_SERVER['PHP_AUTH_USER']) || empty($_SERVER['PHP_AUTH_PW'])) {
-    header('HTTP/1.1 401 Unauthorized');
-    header('WWW-Authenticate: Basic realm="Admin panel"');
-    exit('<h1>401 Требуется авторизация</h1>');
+/* ===== ПОДКЛЮЧЕНИЕ К БД ===== */
+
+try {
+    $db = new PDO(
+        'mysql:host=localhost;dbname=web4sem;charset=utf8mb4',
+        'webuser',
+        'webpass',
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]
+    );
+} catch (PDOException $e) {
+    die('Ошибка подключения к базе данных.');
 }
 
-$db = new PDO(
-    'mysql:host=localhost;dbname=web4sem;charset=utf8mb4',
-    'webuser',
-    'webpass',
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-);
+/* ===== СОЗДАНИЕ ТАБЛИЦЫ АДМИНА, ЕСЛИ ЕЁ НЕТ ===== */
 
-$stmt = $db->prepare("SELECT pass_hash FROM admin WHERE login=?");
-$stmt->execute([$_SERVER['PHP_AUTH_USER']]);
-$admin = $stmt->fetch(PDO::FETCH_ASSOC);
+$db->exec("
+    CREATE TABLE IF NOT EXISTS admin (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        login VARCHAR(50) NOT NULL UNIQUE,
+        pass_hash VARCHAR(255) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+");
 
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
+/*
+    Первый запуск:
+    если в таблице admin нет записей, создаётся админ:
+    login: admin
+    password: 123
+*/
+$countStmt = $db->query("SELECT COUNT(*) AS cnt FROM admin");
+$adminCount = (int)$countStmt->fetch()['cnt'];
 
-
-if (!$admin || !password_verify($_SERVER['PHP_AUTH_PW'], $admin['pass_hash'])) {
-    header('HTTP/1.1 401 Unauthorized');
-    header('WWW-Authenticate: Basic realm="Admin panel"');
-    exit('<h1>401 Неверные данные</h1>');
-}
-?>
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<title>Админ-панель</title>
-<link rel="stylesheet" href="styles.css">
-<style>
-.admin-wrapper {
-    margin-top: 30px;
-}
-
-.admin-title {
-    margin-bottom: 20px;
-}
-
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 30px;
-}
-
-.admin-table th,
-.admin-table td {
-    border: 1px solid #ddd;
-    padding: 8px;
-}
-
-.admin-table th {
-    background-color: #f2f2f2;
-}
-
-.admin-actions a {
-    margin-right: 10px;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-.admin-actions a.edit {
-    color: #007bff;
-}
-
-.admin-actions a.delete {
-    color: #dc3545;
-}
-
-.edit-form {
-    max-width: 600px;
-    margin-bottom: 30px;
-}
-
-.edit-form input,
-.edit-form select,
-.edit-form textarea {
-    width: 100%;
-    margin-bottom: 10px;
-}
-.admin-header {
-    background: linear-gradient(135deg, #343a40, #495057);
-    color: white;
-    padding: 40px 0;
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.admin-main-title {
-    font-size: 36px;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
-}
-
-.admin-subtitle {
-    font-size: 16px;
-    opacity: 0.85;
-}
-
-
-</style>
-</head>
-<body>
-
-<header class="admin-header">
-  <div class="container">
-    <h1 class="admin-main-title">Админ-панель</h1>
-    <p class="admin-subtitle">Управление пользователями и статистикой</p>
-  </div>
-</header>
-
-<main>
-<div class="container admin-wrapper">
-<?php
-
-/* ===== УДАЛЕНИЕ ===== */
-if (!empty($_GET['delete'])) {
-
-    if (
-        empty($_GET['csrf_token']) ||
-        empty($_SESSION['csrf_token']) ||
-        !hash_equals($_SESSION['csrf_token'], $_GET['csrf_token'])
-    ) {
-        die("CSRF validation failed");
-    }
-
-    $id = (int)$_GET['delete'];
-
-    $db->prepare("DELETE FROM application_language WHERE application_id=?")
-       ->execute([$id]);
-
-    $db->prepare("DELETE FROM application WHERE id=?")
-       ->execute([$id]);
-
-    header("Location: admin.php");
-    exit();
-}
-
-/* ===== ОБНОВЛЕНИЕ ===== */
-
-if (!empty($_POST['update'])) {
-
-    $id = (int)$_POST['id'];
-
-    $db->prepare("
-        UPDATE application SET
-        name=?, phone=?, email=?, birthdate=?, gender=?, bio=?
-        WHERE id=?
-    ")->execute([
-        $_POST['fio'],
-        $_POST['phone'],
-        $_POST['email'],
-        $_POST['birth_date'],
-        $_POST['gender'],
-        $_POST['biography'],
-        $id
-    ]);
-
-    $db->prepare("DELETE FROM application_language WHERE application_id=?")
-       ->execute([$id]);
-
+if ($adminCount === 0) {
     $stmt = $db->prepare("
-        INSERT INTO application_language (application_id, language_id)
-        VALUES (?, ?)
+        INSERT INTO admin (login, pass_hash)
+        VALUES (:login, :pass_hash)
     ");
 
-    if (!empty($_POST['languages'])) {
-        foreach ($_POST['languages'] as $lid) {
-            $stmt->execute([$id, $lid]);
-        }
-    }
+    $stmt->execute([
+        ':login' => 'admin',
+        ':pass_hash' => password_hash('123', PASSWORD_DEFAULT)
+    ]);
+}
 
-    header("Location: admin.php");
+$error = '';
+
+/* ===== ВЫХОД ИЗ АДМИНКИ ===== */
+
+if (isset($_GET['logout'])) {
+    unset($_SESSION['admin_id']);
+    unset($_SESSION['admin_login']);
+
+    header('Location: admin.php');
     exit();
 }
 
-/* ===== РЕЖИМ РЕДАКТИРОВАНИЯ ===== */
+/* ===== ОБРАБОТКА ЛОГИНА АДМИНА ===== */
 
-if (!empty($_GET['edit'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_login_form'])) {
+    $login = trim($_POST['login'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
-    $id = (int)$_GET['edit'];
+    if ($login === '' || $password === '') {
+        $error = 'Введите логин и пароль.';
+    } else {
+        $stmt = $db->prepare("
+            SELECT id, login, pass_hash
+            FROM admin
+            WHERE login = :login
+            LIMIT 1
+        ");
 
-    $stmt = $db->prepare("SELECT * FROM application WHERE id=?");
-    $stmt->execute([$id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->execute([
+            ':login' => $login
+        ]);
 
-    $stmt = $db->prepare("SELECT language_id FROM application_language WHERE application_id=?");
-    $stmt->execute([$id]);
-    $user_langs = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $admin = $stmt->fetch();
 
-    $langs = $db->query("SELECT id, name FROM language ORDER BY name")
-                ->fetchAll(PDO::FETCH_ASSOC);
+        if (!$admin || !password_verify($password, $admin['pass_hash'])) {
+            $error = 'Неверный логин или пароль.';
+        } else {
+            $_SESSION['admin_id'] = $admin['id'];
+            $_SESSION['admin_login'] = $admin['login'];
 
+            header('Location: admin.php');
+            exit();
+        }
+    }
+}
+
+/* ===== ЕСЛИ АДМИН НЕ АВТОРИЗОВАН ===== */
+
+if (empty($_SESSION['admin_id'])) {
     ?>
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <title>Вход в админ-панель</title>
+        <link rel="stylesheet" href="../task05/styles.css">
+    </head>
+    <body>
 
-    <h1>Редактирование пользователя #<?= $id ?></h1>
+    <header>
+        <div class="container">
+            <h1>Админ-панель</h1>
+        </div>
+    </header>
 
-    <form method="post" class="edit-form">
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-        <input type="hidden" name="id" value="<?= $id ?>">
-        <input type="hidden" name="update" value="1">
+    <main>
+        <div class="container">
+            <section>
+                <h2>Вход администратора</h2>
 
-        Имя: <br>
-        <input name="fio" value="<?= htmlspecialchars($user['name']) ?>"><br><br>
+                <?php if ($error !== ''): ?>
+                    <div class="error-message">
+                        <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+                    </div>
+                <?php endif; ?>
 
-        Телефон:<br>
-        <input name="phone" value="<?= htmlspecialchars($user['phone']) ?>"><br><br>
+                <form method="POST" action="admin.php">
+                    <input type="hidden" name="admin_login_form" value="1">
 
-        Email:<br>
-        <input name="email" value="<?= htmlspecialchars($user['email']) ?>"><br><br>
+                    <div class="form-group">
+                        <label for="login">Логин</label>
+                        <input type="text" id="login" name="login" required>
+                    </div>
 
-        Дата рождения:<br>
-        <input type="date" name="birth_date" value="<?= $user['birthdate'] ?>"><br><br>
+                    <div class="form-group">
+                        <label for="password">Пароль</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
 
-        Пол:<br>
-        <select name="gender">
-            <option value="male" <?= $user['gender']=='male'?'selected':'' ?>>Мужской</option>
-            <option value="female" <?= $user['gender']=='female'?'selected':'' ?>>Женский</option>
-        </select><br><br>
+                    <button type="submit">Войти</button>
+                </form>
 
-        Биография:<br>
-        <textarea name="biography"><?= htmlspecialchars($user['bio']) ?></textarea><br><br>
+                <p style="margin-top: 20px;">
+                    Первый вход: <strong>admin</strong> / <strong>123</strong>
+                </p>
 
-        Языки:<br>
-        <select name="languages[]" multiple>
-            <?php foreach ($langs as $l): ?>
-                <option value="<?= $l['id'] ?>"
-                <?= in_array($l['id'], $user_langs)?'selected':'' ?>>
-                <?= htmlspecialchars($l['name']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select><br><br>
+                <p style="margin-top: 20px;">
+                    <a href="../murlyka-shelter-main/index.php">Вернуться на сайт</a>
+                </p>
+            </section>
+        </div>
+    </main>
 
-        <button type="submit">Сохранить изменения</button>
-    </form>
-
-    <br>
-    <a href="admin.php">Назад</a>
-
+    </body>
+    </html>
     <?php
     exit();
 }
 
-/* ===== ВЫВОД ПОЛЬЗОВАТЕЛЕЙ ===== */
+/* ===== ПОЛУЧЕНИЕ ЗАЯВОК ===== */
 
-$users = $db->query("SELECT * FROM application ORDER BY id DESC")
-            ->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $stmt = $db->query("
+        SELECT id, name, phone, email, bio, contract, login, created_at
+        FROM application
+        ORDER BY id DESC
+    ");
 
-$stats = $db->query("
-    SELECT l.name, COUNT(al.application_id) AS total
-    FROM language l
-    LEFT JOIN application_language al ON l.id = al.language_id
-    GROUP BY l.id
-")->fetchAll(PDO::FETCH_ASSOC);
+    $applications = $stmt->fetchAll();
+} catch (PDOException $e) {
+    die('Ошибка получения заявок: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'));
+}
+
 ?>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+    <link rel="stylesheet" href="../task05/styles.css">
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: #fff;
+        }
 
-<table class="admin-table">
-<tr>
-<th>ID</th>
-<th>Имя</th>
-<th>Email</th>
-<th>Действия</th>
-</tr>
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            vertical-align: top;
+            text-align: left;
+        }
 
-<?php foreach ($users as $u): ?>
-<tr>
-<td><?= $u['id'] ?></td>
-<td><?= htmlspecialchars($u['name']) ?></td>
-<td><?= htmlspecialchars($u['email']) ?></td>
-<td class="admin-actions">
-<a class="edit" href="admin.php?edit=<?= $u['id'] ?>">Редактировать</a>
-<a class="delete"
-   href="admin.php?delete=<?= $u['id'] ?>&csrf_token=<?= $_SESSION['csrf_token'] ?>"
-   onclick="return confirm('Удалить?')">
-   Удалить
-</a></td>
-</tr>
-<?php endforeach; ?>
-</table>
+        th {
+            background: #f0f0f0;
+        }
 
-<h2>Статистика по языкам</h2>
+        .admin-actions {
+            margin: 20px 0;
+        }
 
-<table class="admin-table">
-<tr><th>Язык</th><th>Количество</th></tr>
-<?php foreach ($stats as $s): ?>
-<tr>
-<td><?= htmlspecialchars($s['name']) ?></td>
-<td><?= $s['total'] ?></td>
-</tr>
-<?php endforeach; ?>
-</table>
-</div>
+        .admin-table-wrapper {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <h1>Админ-панель</h1>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <section>
+            <h2>Заявки с сайта</h2>
+
+            <p>
+                Вы вошли как:
+                <strong><?= htmlspecialchars($_SESSION['admin_login'], ENT_QUOTES, 'UTF-8') ?></strong>
+            </p>
+
+            <div class="admin-actions">
+                <a href="../murlyka-shelter-main/index.php">На сайт</a> |
+                <a href="admin.php?logout=1">Выйти</a>
+            </div>
+
+            <?php if (empty($applications)): ?>
+                <p>Заявок пока нет.</p>
+            <?php else: ?>
+                <div class="admin-table-wrapper">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Имя</th>
+                            <th>Телефон</th>
+                            <th>Email</th>
+                            <th>Сообщение</th>
+                            <th>Согласие</th>
+                            <th>Логин</th>
+                            <th>Дата</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($applications as $app): ?>
+                            <tr>
+                                <td><?= (int)$app['id'] ?></td>
+                                <td><?= htmlspecialchars($app['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= htmlspecialchars($app['phone'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= htmlspecialchars($app['email'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= nl2br(htmlspecialchars($app['bio'] ?? '', ENT_QUOTES, 'UTF-8')) ?></td>
+                                <td><?= ((int)$app['contract'] === 1) ? 'Да' : 'Нет' ?></td>
+                                <td><?= htmlspecialchars($app['login'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= htmlspecialchars($app['created_at'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+    </div>
 </main>
-
-<footer>
-  <div class="container" style="text-align:center; font-size:14px;">
-    © <?= date('Y') ?> Администрирование системы
-  </div>
-</footer>
-
 
 </body>
 </html>

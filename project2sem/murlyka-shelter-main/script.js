@@ -1,15 +1,18 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('Header initialized');
+
     const contactsModal = document.getElementById('contactsModal');
     const openContactsBtn = document.getElementById('openContacts');
     const closeContactsBtn = document.querySelector('.close-modal');
 
     function openModal() {
+        if (!contactsModal) return;
         contactsModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
+        if (!contactsModal) return;
         contactsModal.style.display = 'none';
         document.body.style.overflow = '';
     }
@@ -29,21 +32,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
     const formModal = document.getElementById('formModal');
     const openFormBtn = document.getElementById('openForm');
     const closeFormBtn = document.getElementById('closeForm');
 
     function openFormModal(clearForm = true) {
+        if (!formModal) return;
+
         formModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
 
         if (clearForm) {
             const form = document.getElementById('contactForm');
             if (form) form.reset();
+
+            const formMessage = document.getElementById('formMessage');
+            if (formMessage) {
+                formMessage.style.display = 'none';
+                formMessage.className = 'form-message';
+                formMessage.textContent = '';
+            }
         }
     }
 
     function closeFormModal() {
+        if (!formModal) return;
+
         formModal.style.display = 'none';
         document.body.style.overflow = '';
     }
@@ -61,7 +76,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Клик по фону
     if (formModal) {
         formModal.addEventListener('click', function (e) {
-            if (e.target === formModal) closeFormModal();
+            if (e.target === formModal) {
+                closeFormModal();
+            }
         });
     }
 
@@ -79,6 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
             openFormModal(false);
         });
     });
+
     const contactForm = document.getElementById('contactForm');
     const submitBtn = document.querySelector('.submit-btn');
     const formMessage = document.getElementById('formMessage');
@@ -87,70 +105,112 @@ document.addEventListener('DOMContentLoaded', function() {
         contactForm.addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Отправляем...';
-            formMessage.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Отправляем...';
+            }
+
+            if (formMessage) {
+                formMessage.style.display = 'none';
+                formMessage.className = 'form-message';
+                formMessage.textContent = '';
+            }
 
             try {
                 const formData = new FormData(contactForm);
 
-                const response = await fetch('../task05/form.php', {
-                    method: 'POST',
+                const response = await fetch(contactForm.action, {
+                    method: contactForm.method || 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: formData
                 });
 
                 const result = await response.json();
 
-                if (result.status === 'success') {
-                    formMessage.textContent = 'Заявка отправлена! Мы свяжемся с вами.';
-                    formMessage.className = 'form-message success';
-                    formMessage.style.display = 'block';
-                    contactForm.reset();
+                if (!response.ok || result.status !== 'success') {
+                    const errorMessage = result.message || 'Не удалось отправить форму.';
 
-                    setTimeout(() => {
-                        closeFormModal();
-                        formMessage.style.display = 'none';
-                    }, 3000);
-                } else {
-                    formMessage.textContent = 'Ошибка: ' + (result.message || 'Не удалось отправить форму.');
-                    formMessage.className = 'form-message error';
-                    formMessage.style.display = 'block';
+                    if (formMessage) {
+                        formMessage.textContent = 'Ошибка: ' + errorMessage;
+                        formMessage.className = 'form-message error';
+                        formMessage.style.display = 'block';
+                    } else {
+                        alert('Ошибка: ' + errorMessage);
+                    }
+
+                    return;
                 }
 
+                const login = result.login || '';
+                const password = result.password || '';
+                const profileUrl = result.profile_url || '';
+
+                if (formMessage) {
+                    formMessage.innerHTML =
+                        'Заявка отправлена успешно!<br>' +
+                        '<strong>Логин:</strong> ' + login + '<br>' +
+                        '<strong>Пароль:</strong> ' + password + '<br>' +
+                        '<strong>Профиль:</strong> <a href="' + profileUrl + '">открыть</a>';
+
+                    formMessage.className = 'form-message success';
+                    formMessage.style.display = 'block';
+                } else {
+                    alert(
+                        'Заявка отправлена успешно!\n\n' +
+                        'Логин: ' + login + '\n' +
+                        'Пароль: ' + password + '\n' +
+                        'Профиль: ' + profileUrl
+                    );
+                }
+
+                contactForm.reset();
+
             } catch (error) {
-                formMessage.textContent = 'Ошибка сети. Попробуйте позже.';
-                formMessage.className = 'form-message error';
-                formMessage.style.display = 'block';
+                if (formMessage) {
+                    formMessage.textContent = 'Ошибка сети или сервера. Попробуйте позже.';
+                    formMessage.className = 'form-message error';
+                    formMessage.style.display = 'block';
+                } else {
+                    alert('Ошибка сети или сервера. Попробуйте позже.');
+                }
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Отправить заявку';
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Отправить заявку';
+                }
             }
         });
     }
 
     const dropdownItems = document.querySelectorAll('.dropdown-menu .dropdown-item');
     dropdownItems.forEach(item => item.classList.remove('active'));
+
     const navbarCollapse = document.getElementById('mainNavbar');
     const navLinks = document.querySelectorAll('#mainNavbar a[href^="#"]');
 
     navLinks.forEach(link => {
         link.addEventListener('click', function (e) {
-            const targetId = this.getAttribute('href'); // типа "#cats"
+            const targetId = this.getAttribute('href');
             const targetElement = document.querySelector(targetId);
 
             if (targetElement) {
-                e.preventDefault(); // отменяем стандартный скролл
+                e.preventDefault();
 
-                // плавно скроллим сами
-                targetElement.scrollIntoView({behavior: 'smooth'});
+                targetElement.scrollIntoView({ behavior: 'smooth' });
 
-                // закрываем бургер, если он открыт и экран маленький
-                if (window.innerWidth < 992 && navbarCollapse.classList.contains('show')) {
+                if (
+                    window.innerWidth < 992 &&
+                    navbarCollapse &&
+                    navbarCollapse.classList.contains('show') &&
+                    typeof bootstrap !== 'undefined'
+                ) {
                     const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
                     if (bsCollapse) bsCollapse.hide();
                 }
             }
         });
     });
-
 });
